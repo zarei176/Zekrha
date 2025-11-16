@@ -3,15 +3,20 @@ import 'package:provider/provider.dart';
 
 import '../providers/dhikr_provider.dart';
 import '../providers/settings_provider.dart';
+import '../pages/add_custom_dhikr_page.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/dhikr_model.dart';
 
 class DhikrSelectionWidget extends StatefulWidget {
   final bool showHeader;
+  final TabController? tabController;
+  final Function(DhikrModel)? onSetOverallGoal;
 
   const DhikrSelectionWidget({
     super.key,
     this.showHeader = false,
+    this.tabController,
+    this.onSetOverallGoal,
   });
 
   @override
@@ -36,12 +41,30 @@ class _DhikrSelectionWidgetState extends State<DhikrSelectionWidget> {
           children: [
             // هدر (اختیاری)
             if (widget.showHeader) ...[
-              Text(
-                'کتابخانه اذکار',
-                style: AppTheme.persianTextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'کتابخانه اذکار',
+                      style: AppTheme.persianTextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  // دکمه افزودن ذکر سفارشی
+                  ElevatedButton.icon(
+                    onPressed: () => _navigateToAddCustomDhikr(context),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(
+                      'ذکر جدید',
+                      style: AppTheme.persianTextStyle(fontSize: 12),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
             ],
@@ -163,7 +186,10 @@ class _DhikrSelectionWidgetState extends State<DhikrSelectionWidget> {
           elevation: isSelected ? 4 : 2,
           color: isSelected ? AppTheme.primaryGreen.withOpacity(0.1) : null,
           child: InkWell(
-            onTap: () => dhikrProvider.selectDhikr(dhikr),
+            onTap: () {
+              dhikrProvider.selectDhikr(dhikr);
+              widget.tabController?.animateTo(0); // بازگشت به تب خانه
+            },
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -229,83 +255,75 @@ class _DhikrSelectionWidgetState extends State<DhikrSelectionWidget> {
                   Row(
                     children: [
                       // دسته‌بندی
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          dhikr.category,
-                          style: AppTheme.persianTextStyle(
-                            fontSize: 10,
-                            color: AppTheme.primaryGreen,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                      _buildInfoChip(
+                        text: dhikr.category,
+                        color: AppTheme.primaryGreen,
                       ),
                       
                       const SizedBox(width: 8),
                       
                       // تعداد پیش‌فرض
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${dhikr.defaultCount} بار',
-                          style: AppTheme.persianTextStyle(
-                            fontSize: 10,
-                            color: Colors.blue,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                      _buildInfoChip(
+                        text: '${dhikr.defaultCount} بار',
+                        color: Colors.blue,
                       ),
                       
+                      const SizedBox(width: 8),
+
+                      // هدف کلی
+                      if (dhikr.overallGoal != null && dhikr.overallGoal! > 0)
+                        _buildInfoChip(
+                          text: 'هدف: ${dhikr.overallGoal}',
+                          color: Colors.purple,
+                          icon: Icons.track_changes,
+                        ),
+
                       const Spacer(),
                       
-                      // آیکون انتخاب
-                      if (isSelected)
-                        Icon(
-                          Icons.check_circle,
-                          color: AppTheme.primaryGreen,
-                          size: 20,
-                        ),
+                      // دکمه تنظیم هدف کلی
+                      IconButton(
+                        icon: const Icon(Icons.flag_outlined),
+                        tooltip: 'تنظیم هدف کلی',
+                        onPressed: () => widget.onSetOverallGoal?.call(dhikr),
+                        color: Colors.grey[600],
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
                     ],
                   ),
-                  
-                  // تگ‌ها (اگر وجود داشته باشند)
-                  if (dhikr.tags.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: dhikr.tags.take(3).map((tag) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            tag,
-                            style: AppTheme.persianTextStyle(
-                              fontSize: 9,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  // ویجت برای نمایش چیپ‌های اطلاعاتی
+  Widget _buildInfoChip({required String text, required Color color, IconData? icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: AppTheme.persianTextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -342,6 +360,21 @@ class _DhikrSelectionWidgetState extends State<DhikrSelectionWidget> {
     );
   }
 
+  // نمایش صفحه افزودن ذکر سفارشی
+  void _navigateToAddCustomDhikr(BuildContext context) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AddCustomDhikrPage(),
+      ),
+    );
+    
+    // اگر ذکر جدید اضافه شد، setState را فراخوانی کن
+    if (result == true && mounted) {
+      setState(() {});
+    }
+  }
+
   // نمایش دیالوگ علاقه‌مندی‌ها
   void _showFavoritesDialog(DhikrProvider dhikrProvider) {
     showDialog(
@@ -376,6 +409,7 @@ class _DhikrSelectionWidgetState extends State<DhikrSelectionWidget> {
                       onTap: () {
                         dhikrProvider.selectDhikr(dhikr);
                         Navigator.pop(context);
+                        widget.tabController?.animateTo(0);
                       },
                     );
                   },

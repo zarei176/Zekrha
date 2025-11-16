@@ -43,6 +43,9 @@ class DhikrModel extends HiveObject {
   @HiveField(12)
   bool isCustom;
 
+  @HiveField(13)
+  int? overallGoal;
+
   DhikrModel({
     required this.id,
     required this.arabicText,
@@ -57,6 +60,7 @@ class DhikrModel extends HiveObject {
     this.tags = const [],
     this.priority = 0,
     this.isCustom = false,
+    this.overallGoal,
   });
 
   // کپی با تغییرات
@@ -74,6 +78,7 @@ class DhikrModel extends HiveObject {
     List<String>? tags,
     int? priority,
     bool? isCustom,
+    int? overallGoal,
   }) {
     return DhikrModel(
       id: id ?? this.id,
@@ -89,6 +94,7 @@ class DhikrModel extends HiveObject {
       tags: tags ?? this.tags,
       priority: priority ?? this.priority,
       isCustom: isCustom ?? this.isCustom,
+      overallGoal: overallGoal ?? this.overallGoal,
     );
   }
 
@@ -108,6 +114,7 @@ class DhikrModel extends HiveObject {
       'tags': tags,
       'priority': priority,
       'isCustom': isCustom,
+      'overallGoal': overallGoal,
     };
   }
 
@@ -127,6 +134,7 @@ class DhikrModel extends HiveObject {
       tags: List<String>.from((map['tags'] as List?) ?? []),
       priority: (map['priority'] as int?) ?? 0,
       isCustom: (map['isCustom'] as bool?) ?? false,
+      overallGoal: map['overallGoal'] as int?,
     );
   }
 

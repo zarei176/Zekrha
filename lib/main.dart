@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'app/core/services/duration_adapter.dart';
 import 'app/core/services/notification_service.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/data/models/dhikr_model.dart';
@@ -28,6 +29,7 @@ void main() async {
   // ثبت آداپترهای Hive
   Hive.registerAdapter(DhikrModelAdapter());
   Hive.registerAdapter(DhikrSessionModelAdapter());
+  Hive.registerAdapter(DurationAdapter());
   
   // باز کردن جعبه‌های Hive
   await Hive.openBox<DhikrModel>('dhikrs');

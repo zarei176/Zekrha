@@ -30,13 +30,14 @@ class DhikrModelAdapter extends TypeAdapter<DhikrModel> {
       tags: (fields[10] as List).cast<String>(),
       priority: fields[11] as int,
       isCustom: fields[12] as bool,
+      overallGoal: fields[13] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, DhikrModel obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -62,7 +63,9 @@ class DhikrModelAdapter extends TypeAdapter<DhikrModel> {
       ..writeByte(11)
       ..write(obj.priority)
       ..writeByte(12)
-      ..write(obj.isCustom);
+      ..write(obj.isCustom)
+      ..writeByte(13)
+      ..write(obj.overallGoal);
   }
 
   @override

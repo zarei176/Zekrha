@@ -355,6 +355,9 @@ class DhikrProvider extends ChangeNotifier {
         clickTimes: [..._currentSession!.clickTimes, clickTime],
       );
       
+      // ذخیره فوری در Hive
+      await _sessionBox.put(_currentSession!.id, _currentSession!);
+      
       // بازخورد لمسی
       await _provideFeedback();
       
@@ -366,6 +369,40 @@ class DhikrProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('خطا در شمارش: $e');
+    }
+  }
+  
+  // افزایش شمارش به تعداد مشخص
+  Future<void> incrementBy(int amount) async {
+    if (!_isCountingActive || _currentSession == null) return;
+
+    try {
+      for (int i = 0; i < amount; i++) {
+        _currentCount++;
+        // برای هر افزایش، یک زمان کلیک ثبت می‌کنیم
+        final clickTime = DateTime.now();
+        _currentSession = _currentSession!.copyWith(
+          currentCount: _currentCount,
+          clickTimes: [..._currentSession!.clickTimes, clickTime],
+        );
+
+        // بررسی تکمیل در هر مرحله
+        if (_currentCount >= _targetCount) {
+          await _completeSession();
+          // اگر جلسه کامل شد، از حلقه خارج شو
+          break; 
+        }
+      }
+      
+      // ذخیره فوری در Hive
+      await _sessionBox.put(_currentSession!.id, _currentSession!);
+      
+      // بازخورد لمسی پس از اتمام
+      await _provideFeedback();
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('خطا در افزایش شمارش: $e');
     }
   }
   
@@ -386,6 +423,9 @@ class DhikrProvider extends ChangeNotifier {
         currentCount: _currentCount,
         clickTimes: clickTimes,
       );
+      
+      // ذخیره فوری در Hive
+      await _sessionBox.put(_currentSession!.id, _currentSession!);
       
       notifyListeners();
     } catch (e) {
@@ -480,6 +520,28 @@ class DhikrProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('خطا در تنظیم هدف: $e');
+    }
+  }
+
+  // تنظیم هدف کلی برای یک ذکر
+  Future<void> setOverallGoal(DhikrModel dhikr, int? goal) async {
+    try {
+      final updatedDhikr = dhikr.copyWith(
+        overallGoal: goal,
+        updatedAt: DateTime.now(),
+      );
+      
+      await _dhikrBox.put(dhikr.id, updatedDhikr);
+      
+      // به‌روزرسانی لیست داخلی
+      final index = _dhikrs.indexWhere((d) => d.id == dhikr.id);
+      if (index != -1) {
+        _dhikrs[index] = updatedDhikr;
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('خطا در تنظیم هدف کلی: $e');
     }
   }
   
@@ -653,5 +715,73 @@ class DhikrProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('خطا در تغییر علاقه‌مندی: $e');
     }
+  }
+  
+  // ذخیره ذکر سفارشی
+  Future<void> saveCustomDhikr(DhikrModel dhikr) async {
+    try {
+      await _dhikrBox.put(dhikr.id, dhikr);
+      
+      // به‌روزرسانی لیست‌ها
+      final index = _dhikrs.indexWhere((d) => d.id == dhikr.id);
+      if (index != -1) {
+        _dhikrs[index] = dhikr;
+      } else {
+        _dhikrs.add(dhikr);
+      }
+      
+      // به‌روزرسانی دسته‌بندی‌ها
+      _updateCategories();
+      
+      // به‌روزرسانی علاقه‌مندی‌ها
+      _favoriteDhikrs = _dhikrs.where((d) => d.isFavorite).toList();
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('خطا در ذخیره ذکر سفارشی: $e');
+      rethrow;
+    }
+  }
+  
+  // حذف ذکر سفارشی
+  Future<void> deleteCustomDhikr(DhikrModel dhikr) async {
+    try {
+      // فقط اذکار سفارشی را می‌توان حذف کرد
+      if (!dhikr.isCustom) {
+        throw Exception('فقط اذکار سفارشی قابل حذف هستند');
+      }
+      
+      await _dhikrBox.delete(dhikr.id);
+      
+      // حذف از لیست‌ها
+      _dhikrs.removeWhere((d) => d.id == dhikr.id);
+      _favoriteDhikrs.removeWhere((d) => d.id == dhikr.id);
+      
+      // اگر ذکر فعلی حذف شد، آن را پاک کن
+      if (_currentDhikr?.id == dhikr.id) {
+        _currentDhikr = null;
+        _currentSession = null;
+        _isCountingActive = false;
+      }
+      
+      // به‌روزرسانی دسته‌بندی‌ها
+      _updateCategories();
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('خطا در حذف ذکر سفارشی: $e');
+      rethrow;
+    }
+  }
+  
+  // دریافت اذکار سفارشی
+  List<DhikrModel> get customDhikrs {
+    return _dhikrs.where((d) => d.isCustom).toList();
+  }
+  
+  // دریافت تعداد کل اذکار یک ذکر خاص
+  int getTotalCountForDhikr(String dhikrId) {
+    final sessions = _sessionBox.values.where((s) => s.dhikrId == dhikrId);
+    return sessions.fold(0, (sum, s) => sum + s.currentCount);
   }
 }

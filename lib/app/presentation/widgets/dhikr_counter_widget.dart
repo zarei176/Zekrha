@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/dhikr_provider.dart';
-import '../providers/settings_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 class DhikrCounterWidget extends StatelessWidget {
@@ -15,16 +14,10 @@ class DhikrCounterWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<DhikrProvider, SettingsProvider>(
-      builder: (context, dhikrProvider, settingsProvider, child) {
+    return Consumer<DhikrProvider>(
+      builder: (context, dhikrProvider, child) {
         return Column(
           children: [
-            // متن ذکر
-            if (dhikrProvider.currentDhikr != null) ...[
-              _buildDhikrText(dhikrProvider, settingsProvider),
-              const SizedBox(height: 24),
-            ],
-            
             // شمارنده اصلی
             _buildMainCounter(context, dhikrProvider),
             
@@ -35,64 +28,6 @@ class DhikrCounterWidget extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-
-  // متن ذکر
-  Widget _buildDhikrText(DhikrProvider dhikrProvider, SettingsProvider settingsProvider) {
-    final dhikr = dhikrProvider.currentDhikr!;
-    
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // متن عربی
-            if (settingsProvider.showArabic)
-              Text(
-                dhikr.arabicText,
-                style: AppTheme.arabicTextStyle(
-                  fontSize: settingsProvider.fontSize + 4,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.primaryGreen,
-                ),
-                textAlign: TextAlign.center,
-                textDirection: TextDirection.rtl,
-              ),
-            
-            if (settingsProvider.showArabic && 
-                (settingsProvider.showTranslation || settingsProvider.showMeaning))
-              const SizedBox(height: 12),
-            
-            // ترجمه فارسی
-            if (settingsProvider.showTranslation)
-              Text(
-                dhikr.persianTranslation,
-                style: AppTheme.persianTextStyle(
-                  fontSize: settingsProvider.fontSize,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[700],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            
-            if (settingsProvider.showTranslation && settingsProvider.showMeaning)
-              const SizedBox(height: 8),
-            
-            // معنی
-            if (settingsProvider.showMeaning)
-              Text(
-                dhikr.meaning,
-                style: AppTheme.persianTextStyle(
-                  fontSize: settingsProvider.fontSize - 2,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-          ],
-        ),
-      ),
     );
   }
 

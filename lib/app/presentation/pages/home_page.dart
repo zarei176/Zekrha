@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart' as intl;
 
+import '../../data/models/dhikr_model.dart';
 import '../providers/dhikr_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/dhikr_counter_widget.dart';
 import '../widgets/dhikr_selection_widget.dart';
-import '../widgets/progress_card_widget.dart';
 import '../widgets/stats_overview_widget.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -163,97 +165,124 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // تب شمارنده
   Widget _buildCounterTab() {
-    return Consumer<DhikrProvider>(
-      builder: (context, dhikrProvider, child) {
-        if (dhikrProvider.currentDhikr == null) {
-          return _buildDhikrSelectionView();
-        }
-        
-        return _buildCounterView();
-      },
-    );
-  }
-
-  // نمای انتخاب ذکر
-  Widget _buildDhikrSelectionView() {
-    return const Padding(
-      padding: EdgeInsets.all(16),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // کارت راهنما
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.touch_app,
-                    size: 48,
-                    color: AppTheme.primaryGreen,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'ذکر مورد نظر خود را انتخاب کنید',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'برای شروع شمارش، ابتدا یکی از اذکار را از لیست زیر انتخاب کنید',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
+          // نمایش ذکر فعلی
+          _buildCurrentDhikrDisplay(),
+          
+          const SizedBox(height: 24),
+          
+          // شمارنده اصلی
+          DhikrCounterWidget(
+            pulseAnimation: _pulseAnimation,
           ),
           
-          SizedBox(height: 16),
+          const SizedBox(height: 20),
           
-          // لیست اذکار
-          Expanded(
-            child: DhikrSelectionWidget(),
-          ),
+          // دکمه‌های کنترل
+          _buildControlButtons(),
+          
+          const SizedBox(height: 20),
+          
+          // آمار سریع
+          StatsOverviewWidget(),
         ],
       ),
     );
   }
 
-  // نمای شمارنده
-  Widget _buildCounterView() {
+  // ویجت نمایش ذکر فعلی
+  Widget _buildCurrentDhikrDisplay() {
     return Consumer<DhikrProvider>(
       builder: (context, dhikrProvider, child) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // کارت پیشرفت
-              ProgressCardWidget(),
-              
-              const SizedBox(height: 20),
-              
-              // شمارنده اصلی
-              DhikrCounterWidget(
-                pulseAnimation: _pulseAnimation,
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // دکمه‌های کنترل
-              _buildControlButtons(),
-              
-              const SizedBox(height: 20),
-              
-              // آمار سریع
-              StatsOverviewWidget(),
-            ],
+        final currentDhikr = dhikrProvider.currentDhikr;
+        
+        return Card(
+          elevation: 2,
+          child: InkWell(
+            onTap: () => _tabController.animateTo(1), // رفتن به تب کتابخانه
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: currentDhikr == null
+                  ? _buildSelectDhikrPrompt()
+                  : _buildDhikrDetails(currentDhikr),
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  // پیام برای انتخاب ذکر
+  Widget _buildSelectDhikrPrompt() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.touch_app, color: AppTheme.primaryGreen),
+        const SizedBox(width: 12),
+        Text(
+          'برای شروع، یک ذکر انتخاب کنید',
+          style: AppTheme.persianTextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // جزئیات ذکر انتخاب شده
+  Widget _buildDhikrDetails(DhikrModel dhikr) {
+    return Consumer<SettingsProvider>(
+      builder: (context, settingsProvider, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              dhikr.arabicText,
+              style: AppTheme.arabicTextStyle(
+                fontSize: settingsProvider.fontSize + 4,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryGreen,
+              ),
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
+              
+            ),
+            const SizedBox(height: 8),
+            Text(
+              dhikr.persianTranslation,
+              style: AppTheme.persianTextStyle(
+                fontSize: settingsProvider.fontSize,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              dhikr.meaning,
+              style: AppTheme.persianTextStyle(
+                fontSize: settingsProvider.fontSize - 2,
+                color: Colors.grey[600],
+              ),
+            ),
+            const Divider(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'تغییر ذکر',
+                  style: AppTheme.persianTextStyle(
+                    fontSize: 12,
+                    color: Colors.blue,
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.blue),
+              ],
+            ),
+          ],
         );
       },
     );
@@ -263,43 +292,76 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildControlButtons() {
     return Consumer<DhikrProvider>(
       builder: (context, dhikrProvider, child) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        final bool canCount = dhikrProvider.isCountingActive;
+        
+        return Column(
           children: [
-            // دکمه بازنشانی
-            _buildControlButton(
-              icon: Icons.refresh,
-              label: 'بازنشانی',
-              onPressed: dhikrProvider.isCountingActive
-                  ? () => dhikrProvider.resetCount()
-                  : null,
-              color: Colors.orange,
+            // ردیف اول
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // دکمه بازنشانی
+                _buildControlButton(
+                  icon: Icons.refresh,
+                  label: 'بازنشانی',
+                  onPressed: canCount ? () => dhikrProvider.resetCount() : null,
+                  color: Colors.orange,
+                ),
+                
+                // دکمه شروع/توقف
+                _buildControlButton(
+                  icon: canCount ? Icons.pause : Icons.play_arrow,
+                  label: canCount ? 'توقف' : 'شروع',
+                  onPressed: dhikrProvider.currentDhikr != null
+                      ? () {
+                          if (canCount) {
+                            dhikrProvider.stopSession();
+                          } else {
+                            dhikrProvider.startSession();
+                          }
+                        }
+                      : null,
+                  color: canCount ? Colors.red : AppTheme.primaryGreen,
+                ),
+                
+                // دکمه +10
+                _buildControlButton(
+                  icon: Icons.add,
+                  label: '+10',
+                  onPressed: canCount ? () => dhikrProvider.incrementBy(10) : null,
+                  color: Colors.purple,
+                ),
+                
+                // دکمه ذخیره
+                _buildControlButton(
+                  icon: Icons.save,
+                  label: 'ذخیره',
+                  onPressed: canCount && dhikrProvider.currentCount > 0
+                      ? () => _saveSession(dhikrProvider)
+                      : null,
+                  color: Colors.teal,
+                ),
+              ],
             ),
             
-            // دکمه شروع/توقف
-            _buildControlButton(
-              icon: dhikrProvider.isCountingActive
-                  ? Icons.pause
-                  : Icons.play_arrow,
-              label: dhikrProvider.isCountingActive ? 'توقف' : 'شروع',
-              onPressed: () {
-                if (dhikrProvider.isCountingActive) {
-                  dhikrProvider.stopSession();
-                } else {
-                  dhikrProvider.startSession();
-                }
-              },
-              color: dhikrProvider.isCountingActive
-                  ? Colors.red
-                  : AppTheme.primaryGreen,
-            ),
+            const SizedBox(height: 12),
             
-            // دکمه تنظیم هدف
-            _buildControlButton(
-              icon: Icons.flag,
-              label: 'هدف',
-              onPressed: () => _showTargetDialog(),
-              color: Colors.blue,
+            // دکمه تنظیم هدف (زیر)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: dhikrProvider.currentDhikr != null ? () => _showTargetDialog() : null,
+                icon: const Icon(Icons.flag, size: 18),
+                label: Text(
+                  'تنظیم هدف: ${dhikrProvider.targetCount}',
+                  style: AppTheme.persianTextStyle(fontSize: 14),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                  side: const BorderSide(color: Colors.blue),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
             ),
           ],
         );
@@ -341,9 +403,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // تب کتابخانه اذکار
   Widget _buildDhikrLibraryTab() {
-    return const Padding(
-      padding: EdgeInsets.all(16),
-      child: DhikrSelectionWidget(showHeader: true),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: DhikrSelectionWidget(
+        showHeader: true,
+        tabController: _tabController,
+        onSetOverallGoal: (dhikr) => _showOverallGoalDialog(dhikr),
+      ),
     );
   }
 
@@ -468,34 +534,228 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // نمودار پیشرفت
   Widget _buildProgressChart() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'پیشرفت هفتگی',
-              style: AppTheme.persianTextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              height: 200,
-              child: const Center(
-                child: Text(
-                  'نمودار پیشرفت\n(در نسخه آینده اضافه خواهد شد)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
+    return Consumer<DhikrProvider>(
+      builder: (context, dhikrProvider, child) {
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'پیشرفت هفتگی',
+                      style: AppTheme.persianTextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'هفته اخیر',
+                        style: AppTheme.persianTextStyle(
+                          fontSize: 12,
+                          color: AppTheme.primaryGreen,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 200,
+                  child: _buildWeeklyChart(dhikrProvider),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // نمودار میله‌ای هفتگی
+  Widget _buildWeeklyChart(DhikrProvider dhikrProvider) {
+    // داده‌های 7 روز گذشته
+    final weekData = _getWeeklyData(dhikrProvider);
+    
+    if (weekData.isEmpty || weekData.every((count) => count == 0)) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.bar_chart,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'هنوز داده‌ای برای نمایش وجود ندارد',
+              style: AppTheme.persianTextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
               ),
             ),
           ],
         ),
+      );
+    }
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: (weekData.reduce((a, b) => a > b ? a : b) * 1.2),
+        minY: 0,
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: AppTheme.primaryGreen,
+            tooltipRoundedRadius: 8,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${rod.toY.toInt()} ذکر\n',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                children: [
+                  TextSpan(
+                    text: _getWeekDayName(groupIndex),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _getWeekDayName(value.toInt()),
+                    style: AppTheme.persianTextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                if (value == meta.max || value == meta.min) {
+                  return const SizedBox.shrink();
+                }
+                return Text(
+                  value.toInt().toString(),
+                  style: AppTheme.persianTextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 20,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey[300]!,
+              strokeWidth: 1,
+            );
+          },
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border(
+            bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+            left: BorderSide(color: Colors.grey[300]!, width: 1),
+          ),
+        ),
+        barGroups: weekData.asMap().entries.map((entry) {
+          final index = entry.key;
+          final value = entry.value;
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: value,
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryGreen,
+                    AppTheme.secondaryTeal,
+                  ],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+                width: 20,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(4),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
       ),
     );
+  }
+
+  // دریافت داده‌های هفتگی
+  List<double> _getWeeklyData(DhikrProvider dhikrProvider) {
+    final now = DateTime.now();
+    final weekData = List<double>.filled(7, 0);
+    
+    for (int i = 0; i < 7; i++) {
+      final date = now.subtract(Duration(days: 6 - i));
+      final dayStart = DateTime(date.year, date.month, date.day);
+      final dayEnd = dayStart.add(const Duration(days: 1));
+      
+      final daySessions = dhikrProvider.recentSessions.where((session) =>
+        session.date.isAfter(dayStart.subtract(const Duration(milliseconds: 1))) &&
+        session.date.isBefore(dayEnd));
+      
+      weekData[i] = daySessions.fold(0.0, (sum, session) => sum + session.currentCount);
+    }
+    
+    return weekData;
+  }
+
+  // دریافت نام روز هفته
+  String _getWeekDayName(int index) {
+    final weekDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+    return weekDays[index % 7];
   }
 
   // جلسات اخیر
@@ -738,6 +998,45 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ذخیره جلسه
+  void _saveSession(DhikrProvider dhikrProvider) async {
+    try {
+      // جلسه قبلاً در incrementCount ذخیره شده
+      // این دکمه فقط یک تأیید بصری برای کاربر است
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'جلسه با موفقیت ذخیره شد: ${dhikrProvider.currentCount} ذکر',
+                  style: AppTheme.persianTextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.successColor,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطا در ذخیره: $e'),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   // نمایش دیالوگ تنظیم هدف
   void _showTargetDialog() {
     final dhikrProvider = Provider.of<DhikrProvider>(context, listen: false);
@@ -748,7 +1047,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تنظیم هدف'),
+        title: const Text('تنظیم هدف روزانه'),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
@@ -769,6 +1068,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               Navigator.pop(context);
             },
             child: const Text('تایید'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // نمایش دیالوگ تنظیم هدف کلی
+  void _showOverallGoalDialog(DhikrModel dhikr) {
+    final dhikrProvider = Provider.of<DhikrProvider>(context, listen: false);
+    final controller = TextEditingController(
+      text: dhikr.overallGoal?.toString() ?? '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تنظیم هدف کلی'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'تعداد هدف کلی',
+            hintText: 'اختیاری',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('لغو'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final goal = int.tryParse(controller.text);
+              dhikrProvider.setOverallGoal(dhikr, goal);
+              Navigator.pop(context);
+            },
+            child: const Text('ذخیره'),
           ),
         ],
       ),
